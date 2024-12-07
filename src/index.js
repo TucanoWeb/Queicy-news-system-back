@@ -2,6 +2,10 @@ import Hapi from "@hapi/hapi";
 import Boom from "@hapi/boom";
 import * as hapiCookie from "@hapi/cookie";
 import { apiRoutes } from "./routes/index.js";
+import createTables from "./models/entities/sync/index.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const init = async () => {
   const server = Hapi.server({
@@ -11,36 +15,36 @@ const init = async () => {
         origin: ["*"],
         headers: ["Accept", "Content-Type"],
         additionalHeaders: ["Acess-Control-Allow-Origin"],
-        credentials: true,
-      },
-    },
+        credentials: true
+      }
+    }
   });
 
   await server.register([hapiCookie]);
 
   server.auth.strategy("session", "cookie", {
     cookie: {
-      name: "portal_noticias",
-      password: "alksdflaksjdflakjsdflkaj",
-      isSecure: false,
+      name: process.env.COOKIE_NAME,
+      password: process.env.COOKIE_PWD,
+      isSecure: true,
       isHttpOnly: true,
       path: "/",
-      isSameSite: "None",
+      isSameSite: "None"
     },
-    redirectTo: false,
+    redirectTo: false
   });
 
   server.auth.scheme("session", () => {
     return {
       authenticate: async (request, h) => {
-        const session = request.state["portal_noticias"];
+        const session = request.state[process.env.COOKIE_NAME];
 
         if (!session || !session.isValid) {
           throw Boom.unauthorized("Invalid session");
         }
 
         return h.authenticated({ credentials: session });
-      },
+      }
     };
   });
 
@@ -50,6 +54,9 @@ const init = async () => {
 
   await server.start();
   console.log("Server running...", server.info.uri);
+
+  // create tables, if necessary
+  await createTables.sync();
 };
 
 init();
